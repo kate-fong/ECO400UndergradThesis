@@ -16,6 +16,7 @@ library(sjPlot)
 library(effects)
 library(jtools)
 library(interactions)
+library(modelr)
 
 ddi <- read_ipums_ddi("usa_00002.xml")
 wagedata <- read_ipums_micro(ddi)
@@ -101,19 +102,19 @@ wagedata1_fin <- wagedata1_fin %>%
     occ1990 >=	703	&	occ1990 <=	890	~	7,
   ))
 
-wagedata1_fin$occ1990 <- factor(wagedata1_fin$occ1990) #making is a categorical variable
-wagedata1_fin$age <- factor(wagedata1_fin$age)
-wagedata1_fin$hinsemp <- factor(wagedata1_fin$hinsemp)
-wagedata1_fin$statefip <- factor(wagedata1_fin$statefip)
-wagedata1_fin$degfield <- factor(wagedata1_fin$degfield)
-wagedata1_fin$marst <- factor(wagedata1_fin$marst)
+wagedata1_fin$occ19901 <- factor(wagedata1_fin$occ1990) #making it a categorical variable
+wagedata1_fin$age1 <- factor(wagedata1_fin$age)
+wagedata1_fin$hinsemp1 <- factor(wagedata1_fin$hinsemp)
+wagedata1_fin$statefip1 <- factor(wagedata1_fin$statefip)
+wagedata1_fin$degfield1 <- factor(wagedata1_fin$degfield)
+wagedata1_fin$marst1 <- factor(wagedata1_fin$marst)
 
-#interaction usung * includes all parent terms and interactions already 
+#interaction using * includes all parent terms and interactions already 
 ols <- lm(log(incwage) ~ female*after, data=wagedata1_fin)
-ols2 <- lm(log(incwage) ~ female*after + educ1 +  age, data=wagedata1_fin)
-ols3 <- lm(log(incwage) ~ female*after + educ1 +  age + raceeth , data=wagedata1_fin)
-ols4 <- lm(log(incwage) ~ female*after + educ1 +  age + raceeth + statefip + occ1990 + degfield, data=wagedata1_fin)
-ols5 <- lm(log(incwage) ~ female*after + educ1 +  age + raceeth + statefip + occ1990 + degfield + hinsemp + marst + nchild, data=wagedata1_fin)
+ols2 <- lm(log(incwage) ~ female*after + educ1 +  age1, data=wagedata1_fin)
+ols3 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth , data=wagedata1_fin)
+ols4 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1, data=wagedata1_fin)
+ols5 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1 + hinsemp1 + marst1 + nchild, data=wagedata1_fin)
 #interaction means the effect female is allowed to change after COVID
 
 
@@ -124,39 +125,61 @@ stargazer(ols, ols2, ols3, ols4, ols5,
           dep.var.labels = "lnWageSalaryIncome", 
           column.labels = c("", "", "","",""),
           omit = c("age","occ1990","statefip", "degfield", "marst"),
-          title = "My Data Models") 
+          title = "My OLS Data Models",
+          out= "regoutputs.html") 
 
 #summary stats table output
-sumstatsdata <- wagedata1_fin[, c("female","after", "educ1", "age", "raceeth", "statefip", "occ1990","degfield","hinsemp","marst", "nchild")]
+sumstatsdata <- wagedata1_fin[, c("female","after", "educ", "age", "raceeth", "statefip", "occ1990","degfield","hinsemp","marst", "nchild")]
 
-stargazer(sumstatsdata, type="text")
 
-stargazer(sumstatsdata, type="text", title="Summary Statistics", out ="/Users/katefong/Documents/ECO 400 Project/Updated Data Pull (Includes 2021)/sumstats.html")                           
 
+stargazer(as.data.frame(sumstatsdata), type="text", title="Summary Statistics", out ="/Users/katefong/Documents/ECO 400 Project/Updated Data Pull (Includes 2021)/sumstats.html")                           
 
 
 #Regression for Data Visualization (AVG Female wage and AVG Male wage by age)
+
+###TEST##
+
 vis <- lm(log(incwage) ~ female + age + female*age, data=wagedata1_fin)
 
-plot_model(vis, type = "pred", terms = c("female"))  #https://cran.r-project.org/web/packages/sjPlot/vignettes/plot_interactions.html
+ggplot(wagedata1_fin, aes(x= age , y=predict(vis), col = ifelse(female == 1, "re", "blue"))) +
+  geom_point() +
+  geom_abline(intercept=1, slope=1, linetype="dashed") +
+  xlab("Actual Outcome") +
+  ylab("Predicted Outcome")+
+  ggtitle("Regression with Dummy Variable Interation")
 
-visreg(vis, "age", gg= TRUE ) #https://rkabacoff.github.io/datavis/Models.html#linear-regression
+######
 
-#VV best so far
-ggplot(wagedata1_fin,aes(y=incwage,x=age))+geom_point() #https://cran.r-project.org/web/packages/ggiraphExtra/vignettes/ggPredict.html
-#only looking at men/women in finance discuss variables and American Community Survey, talk about male/female differential (labor textbooks), 
+# create a factor version of age
+wagedata1_fin$age1 <- factor(wagedata1_fin$age)
 
+summary(wagedata1_fin$age)
 
-#Regression for Data Visualization (AVG Female wage and AVG Male wage by age)
-vis <- lm(incwage ~ female + age + female*age, data=wagedata1_fin)
+# estimate the model and store it in model1
+model1 <- lm(log(incwage) ~ female*age1, data=wagedata1_fin)
+summary(model1)
 
-summary(vis)
+# convert female to a factor variable
+wagedata1_fin$female <- factor(wagedata1_fin$female)
+class(wagedata1_fin$female)
 
-ggplot(wagedata1_fin, aes(x = age,
-                          y = mean(incwage),
-                          col = female)) + geom_point() 
+# create a grid of values of age and female
+grid <- wagedata1_fin %>%
+  data_grid(age1,female)
+grid
 
-summary("age", wagedata1_fin)
+# add predictions from model1 to the grid of values
+grid <- grid %>%
+  add_predictions(model1)
+grid
+summary(grid)
 
-
-
+# plot the average of the log of women's and men's wages
+ggplot(grid, aes(x=age1, y=pred, col = ifelse(female == 0, "Male", "Female"))) + 
+  geom_point() +
+  labs(x = "Age", y = "Predicted Coefficient")  +
+  ggtitle("Regression with Dummy Variable Interation") +
+  theme(plot.title = element_text(hjust = 0.5)) +  #centers title
+  guides(color = guide_legend(title = "Gender"))  
+  
