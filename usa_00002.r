@@ -13,13 +13,13 @@ library(ipumsr)
 library(stargazer)
 library(estimatr)
 library(ggplot2)
-library(sjPlot)
-library(effects)
+#library(sjPlot)
+#library(effects)
 library(jtools)
 library(interactions)
 library(modelr)
-library(sandwich)
-library(plm)
+#library(sandwich)
+#library(plm)
 library(lmtest)
 library(car)
 library(devtools)
@@ -123,11 +123,12 @@ ols4 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + o
 ols5 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1 + hinsemp1 + marst1 + nchild, data=wagedata1_fin)
 #interaction means the effect female is allowed to change after COVID
 
-summary(ols)
+summary(ols3)
 
 #regression table output
-stargazer(ols, ols2, ols3,ols4, ols5,
+stargazer(ols, ols3, ols4, ols5,
           type = "html", 
+          covariate.labels = c("Female", "After", "Female*After"),
           #covariate.labels = c("Female", "After", "HighSchool", "SomeCollege", "College", "NonHispanicBlack", "NonHispanicAsian", "NonHispanicOther", "Hispanic", "HealthInsurance", "NumChild"),  
           dep.var.labels = "lnWageSalaryIncome", 
           column.labels = c("", "", "","",""),
@@ -185,13 +186,16 @@ grid
 summary(grid)
 
 # plot the average of the log of women's and men's wages
-ggplot(grid, aes(x=age1, y=pred, col = ifelse(female == 0, "Male", "Female"))) + 
+malefemalewages <- 
+  ggplot(grid, aes(x=age1, y=pred, col = ifelse(female == 0, "Male", "Female"))) + 
   geom_point() +
   labs(x = "Age", y = "Log Wage")  +
   ggtitle("Male vs. Female Wages in the Finance Industry") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +  #centers title
-  guides(color = guide_legend(title = "Gender"))
+  guides(color = guide_legend(title = "Gender")) + theme(legend.title.align=0.6) 
+
+ggsave("malefemwages.png", malefemalewages, dpi = 300) #saving image
 
 #mention this is without any control variables but still shows an interesting relationship
 #backups up argument to put age in as a dummy; using dummies allows the relationship to be whatever it is
