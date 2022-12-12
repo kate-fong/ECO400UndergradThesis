@@ -3,7 +3,8 @@
 
 if (!require("ipumsr")) stop("Reading IPUMS data into R requires the ipumsr package. It can be installed using the following command: install.packages('ipumsr')")
 
-setwd("/Users/katefong/Documents/ECO 400 Project/Updated Data Pull (Includes 2021) USE THS!")
+setwd("/Users/katefong/Documents/ECO 400 Project/Updated Data Pull (Includes 2021)")
+
 
 library(tidyverse)
 library(readxl)
@@ -17,6 +18,11 @@ library(effects)
 library(jtools)
 library(interactions)
 library(modelr)
+library(sandwich)
+library(plm)
+library(lmtest)
+library(car)
+library(devtools)
 
 ddi <- read_ipums_ddi("usa_00002.xml")
 wagedata <- read_ipums_micro(ddi)
@@ -117,15 +123,16 @@ ols4 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + o
 ols5 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1 + hinsemp1 + marst1 + nchild, data=wagedata1_fin)
 #interaction means the effect female is allowed to change after COVID
 
+summary(ols)
 
 #regression table output
-stargazer(ols, ols2, ols3, ols4, ols5, 
-          type = "text", 
-          covariate.labels = c("Female", "After", "HighSchool", "SomeCollege", "College", "NonHispanicBlack", "NonHispanicAsian", "NonHispanicOther", "Hispanic", "HealthInsurance", "NumChild"),  
+stargazer(ols, ols2, ols3,ols4, ols5,
+          type = "html", 
+          #covariate.labels = c("Female", "After", "HighSchool", "SomeCollege", "College", "NonHispanicBlack", "NonHispanicAsian", "NonHispanicOther", "Hispanic", "HealthInsurance", "NumChild"),  
           dep.var.labels = "lnWageSalaryIncome", 
           column.labels = c("", "", "","",""),
-          omit = c("age","occ1990","statefip", "degfield", "marst"),
-          title = "My OLS Data Models",
+          omit = c("age","occ1990","statefip", "degfield", "marst", "educ1", "raceeth","hinsemp1", "nchild"),
+          title = "Linear OLS Regressions Predicting Log Wage",
           out= "regoutputs.html") 
 
 #summary stats table output
@@ -160,6 +167,8 @@ summary(wagedata1_fin$age)
 model1 <- lm(log(incwage) ~ female*age1, data=wagedata1_fin)
 summary(model1)
 
+stargazer(model1,type="text")
+
 # convert female to a factor variable
 wagedata1_fin$female <- factor(wagedata1_fin$female)
 class(wagedata1_fin$female)
@@ -178,8 +187,19 @@ summary(grid)
 # plot the average of the log of women's and men's wages
 ggplot(grid, aes(x=age1, y=pred, col = ifelse(female == 0, "Male", "Female"))) + 
   geom_point() +
-  labs(x = "Age", y = "Predicted Coefficient")  +
-  ggtitle("Regression with Dummy Variable Interation") +
+  labs(x = "Age", y = "Log Wage")  +
+  ggtitle("Male vs. Female Wages in the Finance Industry") +
+  theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +  #centers title
-  guides(color = guide_legend(title = "Gender"))  
-  
+  guides(color = guide_legend(title = "Gender"))
+
+#mention this is without any control variables but still shows an interesting relationship
+#backups up argument to put age in as a dummy; using dummies allows the relationship to be whatever it is
+#Difference in the logs times 100 is the percent difference
+# 10.8-10.4 * 100 = 33% difference ; At 25 a male earns 30% more than women
+# at age 54 there is a 75% difference
+
+#notice that the wage growth for women goes til 36 (child bearing age) whereas male seems to get wage growth until about 50
+#doesn't control for occupation and other variables that would likely shrink the gap
+
+#female coefficient  is for age 25
