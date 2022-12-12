@@ -23,6 +23,7 @@ library(modelr)
 library(lmtest)
 library(car)
 library(devtools)
+library(freqtables)
 
 ddi <- read_ipums_ddi("usa_00002.xml")
 wagedata <- read_ipums_micro(ddi)
@@ -188,14 +189,19 @@ summary(grid)
 # plot the average of the log of women's and men's wages
 malefemalewages <- 
   ggplot(grid, aes(x=age1, y=pred, col = ifelse(female == 0, "Male", "Female"))) + 
-  geom_point() +
+  geom_point(size=2.7) +
   labs(x = "Age", y = "Log Wage")  +
   ggtitle("Male vs. Female Wages in the Finance Industry") +
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5)) +  #centers title
-  guides(color = guide_legend(title = "Gender")) + theme(legend.title.align=0.6) 
+  theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5)) +    #  #centers title
+  guides(color = guide_legend(title = "Gender", reverse = TRUE)) +  #reverse function changes the order of the legend
+  theme(legend.title.align=0.6, legend.position = c(.93, 0.095), legend.box.background = element_rect(color="black", size=.2),
+        legend.box.margin = margin(4, 4, 4, 4)) 
 
-ggsave("malefemwages.png", malefemalewages, dpi = 300) #saving image
+  #scale_y_continuous(expand=c(0, 0), limits=c(0, 12))    <- makes y axis start at 0
+  #theme(legend.position = "top")
+
+ggsave("malefemwages_legendinside.png", malefemalewages, dpi = 300) #saving image
 
 #mention this is without any control variables but still shows an interesting relationship
 #backups up argument to put age in as a dummy; using dummies allows the relationship to be whatever it is
@@ -207,3 +213,7 @@ ggsave("malefemwages.png", malefemalewages, dpi = 300) #saving image
 #doesn't control for occupation and other variables that would likely shrink the gap
 
 #female coefficient  is for age 25
+
+
+#summary stats for men and women
+
