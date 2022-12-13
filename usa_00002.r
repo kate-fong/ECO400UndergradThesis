@@ -18,12 +18,13 @@ library(ggplot2)
 library(jtools)
 library(interactions)
 library(modelr)
-#library(sandwich)
-#library(plm)
+library(sandwich)
+library(plm)
 library(lmtest)
 library(car)
 library(devtools)
 library(freqtables)
+library(vtable)
 
 ddi <- read_ipums_ddi("usa_00002.xml")
 wagedata <- read_ipums_micro(ddi)
@@ -87,7 +88,7 @@ table(wagedata1$female)/nrow(wagedata1) #to see the value as a percentage
 #Total # divided by # of rows 
 # 52% men, 48% women
 
-wagedata1_fin <- wagedata1 %>% filter(ind1990 >= 700 & ind1990 <=710)
+wagedata1_fin <- wagedata1 %>% filter(ind1990 >= 700 & ind1990 <=710) 
 
 lm(log(incwage) ~ educ1 + raceeth + female + age , data=wagedata1_fin) #women make 42% less than men in the financial sector controlling for education
 
@@ -123,43 +124,49 @@ ols3 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth , data=wagedata
 ols4 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1, data=wagedata1_fin)
 ols5 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1 + hinsemp1 + marst1 + nchild, data=wagedata1_fin)
 #interaction means the effect female is allowed to change after COVID
+summary(ols)
 
-summary(ols3)
+#looking at robust standard errors
+coeftest(ols3, vcov = vcovHC)
+ct <- coeftest(ols, vcov = vcovHC)
+summary(ct)
 
-#regression table output
-stargazer(ols, ols3, ols4, ols5,
+summary(wagedata1_fin, "hinsemp1")
+
+
+
+#regression table output (no Robust standard errors ):
+stargazer(ols,ols2, ols3, ols4, ols5,
           type = "html", 
           covariate.labels = c("Female", "After", "Female*After"),
           #covariate.labels = c("Female", "After", "HighSchool", "SomeCollege", "College", "NonHispanicBlack", "NonHispanicAsian", "NonHispanicOther", "Hispanic", "HealthInsurance", "NumChild"),  
           dep.var.labels = "lnWageSalaryIncome", 
           column.labels = c("", "", "","",""),
-          omit = c("age","occ1990","statefip", "degfield", "marst", "educ1", "raceeth","hinsemp1", "nchild"),
+          omit = c("age1","occ19901","statefip1", "degfield1", "marst1", "educ1", "raceeth","hinsemp1", "nchild"),
           title = "Linear OLS Regressions Predicting Log Wage",
           out= "regoutputs.html") 
 
 #summary stats table output
-sumstatsdata <- wagedata1_fin[, c("female","after", "educ", "age", "raceeth", "statefip", "occ1990","degfield","hinsemp","marst", "nchild")]
+sumstatsdata <- wagedata1_fin[, c( "age", "incwage", "nchild","female", "educ1", "raceeth")]
 
+summary(sumstatsdata)
+   #stargazer(as.data.frame(sumstatsdata), type="text", title="Summary Statistics", out ="/Users/katefong/Documents/ECO 400 Project/Updated Data Pull (Includes 2021)/sumstats.html")                           
+ #vtable : https://cran.r-project.org/web/packages/vtable/vignettes/sumtable.html
+st(sumstatsdata, summ.names = list(c('N', 'Mean', 'SD', 'Min', 'Max')), 
+   digits = 2, out = "browser" ) 
 
+st(sumstatsdata, group = 'female', group.test = FALSE, digits = 2, out='browser')
 
-stargazer(as.data.frame(sumstatsdata), type="text", title="Summary Statistics", out ="/Users/katefong/Documents/ECO 400 Project/Updated Data Pull (Includes 2021)/sumstats.html")                           
+#gender <- sumstatsdata %>%
+  #freq_table(female)
 
+#gender_education <- sumstatsdata %>%
+  #freq_table(female, educ1)
+
+#gender_raceeth <- sumstatsdata %>%
+  #freq_table(female, raceeth)
 
 #Regression for Data Visualization (AVG Female wage and AVG Male wage by age)
-
-###TEST##
-
-vis <- lm(log(incwage) ~ female + age + female*age, data=wagedata1_fin)
-
-ggplot(wagedata1_fin, aes(x= age , y=predict(vis), col = ifelse(female == 1, "re", "blue"))) +
-  geom_point() +
-  geom_abline(intercept=1, slope=1, linetype="dashed") +
-  xlab("Actual Outcome") +
-  ylab("Predicted Outcome")+
-  ggtitle("Regression with Dummy Variable Interation")
-
-######
-
 # create a factor version of age
 wagedata1_fin$age1 <- factor(wagedata1_fin$age)
 
@@ -191,12 +198,12 @@ malefemalewages <-
   ggplot(grid, aes(x=age1, y=pred, col = ifelse(female == 0, "Male", "Female"))) + 
   geom_point(size=2.7) +
   labs(x = "Age", y = "Log Wage")  +
-  ggtitle("Male vs. Female Wages in the Finance Industry") +
-  theme_bw() + 
+  ggtitle("Male vs. Female Wages in the Finance Industry By Age") +
+  theme_bw() +
   theme(plot.title = element_text(hjust = 0.5)) +    #  #centers title
   guides(color = guide_legend(title = "Gender", reverse = TRUE)) +  #reverse function changes the order of the legend
-  theme(legend.title.align=0.6, legend.position = c(.93, 0.095), legend.box.background = element_rect(color="black", size=.2),
-        legend.box.margin = margin(4, 4, 4, 4)) 
+  theme(legend.title.align=0.6, legend.position = c(.93, 0.096), legend.box.background = element_rect(color="black", size=.2),
+        legend.box.margin = margin(4, 4, 4, 4)) #Saving 8.39 x 6.24 in image
 
   #scale_y_continuous(expand=c(0, 0), limits=c(0, 12))    <- makes y axis start at 0
   #theme(legend.position = "top")
