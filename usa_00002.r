@@ -124,7 +124,7 @@ ols3 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth , data=wagedata
 ols4 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1, data=wagedata1_fin)
 ols5 <- lm(log(incwage) ~ female*after + educ1 +  age1 + raceeth + statefip1 + occ19901 + degfield1 + hinsemp1 + marst1 + nchild, data=wagedata1_fin)
 #interaction means the effect female is allowed to change after COVID
-summary(ols)
+
 
 #looking at robust standard errors
 coeftest(ols3, vcov = vcovHC)
@@ -223,4 +223,4 @@ ggsave("malefemwages_legendinside.png", malefemalewages, dpi = 300) #saving imag
 
 
 #summary stats for men and women
-
+#write.csv(wagedata1_fin, '400data')
